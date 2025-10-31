@@ -2,11 +2,11 @@
 
 Este projeto é uma simulação completa de uma infraestrutura de rede corporativa de pequeno a médio porte, construída inteiramente no Cisco Packet Tracer. O objetivo principal foi projetar e implementar uma rede segura, segmentada, escalável e realista, aplicando as melhores práticas de segurança em múltiplas camadas (Defense in Depth).
 
-O design evoluiu de uma simples rede plana para uma arquitetura complexa de "roteador duplo", separando o roteamento interno do firewall de perímetro.
+Baseado em uma empresa fictícia de tecnologia chamada ELDH Technologies and Cybersecurity, o design evoluiu de uma simples rede plana para uma arquitetura complexa de "roteador duplo", separando o roteamento interno do firewall de perímetro.
 
 ## Topologia Lógica Final
 
-A topologia lógica demonstra a arquitetura de rede, incluindo o plano de IP, as VLANs, as zonas de segurança (Interna, DMZ, Convidados) e o fluxo de tráfego para a Internet.
+A topologia lógica demonstra a arquitetura de rede, incluindo o plano de IP, as VLANs, as zonas de segurança (Interna, DMZ, Convidados) e o fluxo de tráfego para a Internet. Além disso, possui uma zona apenas com dispositivos usados na infraestrutura física.
 
 <img width="1681" height="733" alt="topologia_logica" src="https://github.com/user-attachments/assets/afb0ebab-b852-4a56-8d47-fb0f1ba419df" />
 
@@ -106,4 +106,29 @@ ip access-list extended GUEST_RULES
  ! Regra 20: Bloquear acesso a TODAS as redes internas (192.168.x.x)
  20 deny ip 192.168.99.0 0.0.0.255 192.168.0.0 0.0.255.255
  ! Regra 30: Permitir todo o resto (a Internet)
- 30 permit ip any any
+ 30 permit ip any any ```
+```
+### 2. NAT (No `Firewall-Router`)
+Esta configuração traduz todos os IPs internos (definidos na ACL `NAT_TRAFFIC`) para o IP público da interface `GigabitEthernet0/0/1`.
+
+```bash
+! Define quem pode ser traduzido
+ip access-list standard NAT_TRAFFIC
+ permit 192.168.10.0 0.0.0.255
+ permit 192.168.20.0 0.0.0.255
+ permit 192.168.25.0 0.0.0.255
+ permit 192.168.99.0 0.0.0.255
+ permit 192.168.100.0 0.0.0.255
+ permit 192.168.254.0 0.0.0.255
+
+! Aplica a regra de NAT (PAT)
+ip nat inside source list NAT_TRAFFIC interface GigabitEthernet0/0/1 overload
+```
+
+### 3. Rota de Retorno (No `Firewall-Router`)
+Este foi o comando de diagnóstico crucial que fez o tráfego de resposta da Internet funcionar. Ele ensina ao firewall como "encontrar" as VLANs internas através do roteador interno.
+
+```bash
+! Para encontrar qualquer IP 192.168.x.x, envie para o Roteador-ELDE (192.168.254.2)
+ip route 192.168.0.0 255.255.0
+```
