@@ -8,13 +8,15 @@ O design evoluiu de uma simples rede plana para uma arquitetura complexa de "rot
 
 A topologia lógica demonstra a arquitetura de rede, incluindo o plano de IP, as VLANs, as zonas de segurança (Interna, DMZ, Convidados) e o fluxo de tráfego para a Internet.
 
-<img width="1681" height="733" alt="topologia_logica" src="https://github.com/user-attachments/assets/41b34893-7b00-41f1-b66e-3ee6abb069c1" />
+<img width="1681" height="733" alt="topologia_logica" src="https://github.com/user-attachments/assets/afb0ebab-b852-4a56-8d47-fb0f1ba419df" />
+
 
 ## Topologia Física
 
 A topologia física demonstra o layout do escritório, o cabeamento estruturado e a organização dos equipamentos no data center, mostrando a separação física dos departamentos e a segurança dos ativos de rede.
 
-<img width="1530" height="746" alt="topologia_fisica" src="https://github.com/user-attachments/assets/37154110-702f-4c3a-9727-ed0e88aae10f" />
+<img width="1530" height="746" alt="topologia_fisica" src="https://github.com/user-attachments/assets/85c01ca5-a8dd-4176-9cb5-e91e0aaab67d" />
+
 
 ---
 
@@ -90,24 +92,14 @@ Após baixar o arquivo `.pkt` e abri-lo no Cisco Packet Tracer:
     * Abra o **Command Prompt** e conecte-se via SSH ao roteador: `ssh -l admin 192.168.25.1`.
     * **Resultado:** O login SSH deve funcionar.
 
+## Destaques da Configuração
 
-! Aplica a regra de NAT (PAT)
-ip nat inside source list NAT_TRAFFIC interface GigabitEthernet0/0/1 overload
-3. Rota de Retorno (No Firewall-Router)
-Este foi o comando de diagnóstico crucial que fez o tráfego de resposta da Internet funcionar. Ele ensina ao firewall como "encontrar" as VLANs internas através do roteador interno.
-
-''bash
-! Para encontrar qualquer IP 192.168.x.x, envie para o Roteador-ELDE (192.168.254.2)
-ip route 192.168.0.0 255.255.0.0 192.168.254.2
-
-Destaques da Configuração
 Abaixo estão alguns dos principais trechos de código que fazem a rede funcionar.
 
-1. ACL GUEST_RULES (No Roteador-ELDE)
-Esta ACL é a principal regra de segurança para convidados. A ordem é crucial: ela nega o tráfego interno (Regra 20) antes de permitir o tráfego da Internet (Regra 30).
+### 1. ACL `GUEST_RULES` (No `Roteador-ELDE`)
+Esta ACL é a principal regra de segurança para convidados. A ordem é crucial: ela nega o tráfego interno (Regra 20) *antes* de permitir o tráfego da Internet (Regra 30).
 
-Bash
-
+```bash
 ip access-list extended GUEST_RULES
  ! Regra 10: Permitir que o DHCP funcione
  10 permit udp host 0.0.0.0 host 255.255.255.255 eq bootps
@@ -115,26 +107,3 @@ ip access-list extended GUEST_RULES
  20 deny ip 192.168.99.0 0.0.0.255 192.168.0.0 0.0.255.255
  ! Regra 30: Permitir todo o resto (a Internet)
  30 permit ip any any
-2. NAT (No Firewall-Router)
-Esta configuração traduz todos os IPs internos (definidos na ACL NAT_TRAFFIC) para o IP público da interface GigabitEthernet0/0/1.
-
-Bash
-
-! Define quem pode ser traduzido
-ip access-list standard NAT_TRAFFIC
- permit 192.168.10.0 0.0.0.255
- permit 192.168.20.0 0.0.0.255
- permit 192.168.25.0 0.0.0.255
- permit 192.168.99.0 0.0.0.255
- permit 192.168.100.0 0.0.0.255
- permit 192.168.254.0 0.0.0.255
-
-! Aplica a regra de NAT (PAT)
-ip nat inside source list NAT_TRAFFIC interface GigabitEthernet0/0/1 overload
-3. Rota de Retorno (No Firewall-Router)
-Este foi o comando de diagnóstico crucial que fez o tráfego de resposta da Internet funcionar. Ele ensina ao firewall como "encontrar" as VLANs internas através do roteador interno.
-
-Bash
-
-! Para encontrar qualquer IP 192.168.x.x, envie para o Roteador-ELDE (192.168.254.2)
-ip route 192.168.0.0 255.255.0.0 192.168.254.2
