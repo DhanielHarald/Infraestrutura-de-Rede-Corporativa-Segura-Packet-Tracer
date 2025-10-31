@@ -90,14 +90,24 @@ Após baixar o arquivo `.pkt` e abri-lo no Cisco Packet Tracer:
     * Abra o **Command Prompt** e conecte-se via SSH ao roteador: `ssh -l admin 192.168.25.1`.
     * **Resultado:** O login SSH deve funcionar.
 
-## Destaques da Configuração
 
+! Aplica a regra de NAT (PAT)
+ip nat inside source list NAT_TRAFFIC interface GigabitEthernet0/0/1 overload
+3. Rota de Retorno (No Firewall-Router)
+Este foi o comando de diagnóstico crucial que fez o tráfego de resposta da Internet funcionar. Ele ensina ao firewall como "encontrar" as VLANs internas através do roteador interno.
+
+''bash
+! Para encontrar qualquer IP 192.168.x.x, envie para o Roteador-ELDE (192.168.254.2)
+ip route 192.168.0.0 255.255.0.0 192.168.254.2
+
+Destaques da Configuração
 Abaixo estão alguns dos principais trechos de código que fazem a rede funcionar.
 
-### 1. ACL `GUEST_RULES` (No `Roteador-ELDE`)
-Esta ACL é a principal regra de segurança para convidados. A ordem é crucial: ela nega o tráfego interno (Regra 20) *antes* de permitir o tráfego da Internet (Regra 30).
+1. ACL GUEST_RULES (No Roteador-ELDE)
+Esta ACL é a principal regra de segurança para convidados. A ordem é crucial: ela nega o tráfego interno (Regra 20) antes de permitir o tráfego da Internet (Regra 30).
 
-```bash
+Bash
+
 ip access-list extended GUEST_RULES
  ! Regra 10: Permitir que o DHCP funcione
  10 permit udp host 0.0.0.0 host 255.255.255.255 eq bootps
@@ -105,11 +115,11 @@ ip access-list extended GUEST_RULES
  20 deny ip 192.168.99.0 0.0.0.255 192.168.0.0 0.0.255.255
  ! Regra 30: Permitir todo o resto (a Internet)
  30 permit ip any any
-
-### 2. NAT (No Firewall-Router)
+2. NAT (No Firewall-Router)
 Esta configuração traduz todos os IPs internos (definidos na ACL NAT_TRAFFIC) para o IP público da interface GigabitEthernet0/0/1.
 
-'''bash
+Bash
+
 ! Define quem pode ser traduzido
 ip access-list standard NAT_TRAFFIC
  permit 192.168.10.0 0.0.0.255
@@ -124,6 +134,7 @@ ip nat inside source list NAT_TRAFFIC interface GigabitEthernet0/0/1 overload
 3. Rota de Retorno (No Firewall-Router)
 Este foi o comando de diagnóstico crucial que fez o tráfego de resposta da Internet funcionar. Ele ensina ao firewall como "encontrar" as VLANs internas através do roteador interno.
 
-''bash
+Bash
+
 ! Para encontrar qualquer IP 192.168.x.x, envie para o Roteador-ELDE (192.168.254.2)
 ip route 192.168.0.0 255.255.0.0 192.168.254.2
